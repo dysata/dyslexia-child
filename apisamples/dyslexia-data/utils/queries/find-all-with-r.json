@@ -1,0 +1,54 @@
+{
+   "selector": {
+      "dataobject": {
+         "$and": [
+            {
+               "files": {
+                  "$elemMatch": {
+                     "mime": {
+                        "$regex": "audio*"
+                     }
+                  }
+               },
+               "meta": {
+                  "annotation": {
+                     "$and": [
+                        {
+                           "value": {
+                              "$elemMatch": {
+                                 "$and": [
+                                    {
+                                       "data.rquality": {
+                                          "$exists": true
+                                       }
+                                    },
+                                    {
+                                       "data.rquality": {
+                                          "$ne": "no-sound"
+                                       }
+                                    }
+                                 ]
+                              }
+                           }
+                        },
+                        {
+                           "time": {
+                              "$lte": 1690146300000
+                           }
+                        }
+                     ]
+                  }
+               }
+            },
+            {
+               "tags": {
+                  "$all": [
+                     "t30"
+                  ]
+               }
+            }
+         ]
+      }
+   },
+   "limit": 1000
+}

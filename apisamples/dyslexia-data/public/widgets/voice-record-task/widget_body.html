@@ -1,0 +1,43 @@
+    <div class="wrapper">
+      <header>
+        <h2>Задание: аудиозапись</h2>
+		<h3 align="center" id="voice_record_task_name"></h3>
+		<br>
+		<h3>Инструкция</h3>
+		<ul>
+		<li>внесите данные в поля формы</li>
+		<li>нажмите кнопку "запись"</li>
+		<li>прочитайте текст</li>
+		<li>нажмите кнопку "Стоп"</li>
+		<li>нажмите кнопку "Отправить и перейти к следующему заданию"</li>
+		</ul>
+		</header>
+		<section class="main-controls">
+		<h3>Форма</h3>
+ 		<form>
+		<div class="form-group">
+			<label for="sex_select">Укажите пол:</label>
+			<select name="sex" id="sex_select" class="form-control">
+				<option value="">--</option>
+				<option value="m">М</option>
+				<option value="f">Ж</option>
+			</select>
+		</div>
+		<div class="form-outline">
+ 			<label for="age_input">Укажите возраст:</label>
+			<input type="number" id="age_input" class="form-control" min="4" max="100"/>
+		</div>
+		</form>
+		<h3>Чтение и запись</h3>
+        <canvas class="visualizer" height="60px"></canvas>
+        <div id="buttons">
+          <button class="record">Запись</button>
+          <button class="stop">Стоп</button>
+        </div>
+      </section>
+      <section class="sound-clips">
+      </section>
+	<h3>Текст</h3>
+    <div id="text_to_read" style="height: 300px; overflow-y: scroll;">
+    </div>
+    </div>

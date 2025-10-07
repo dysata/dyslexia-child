@@ -1,0 +1,20 @@
+<%- include('head', { title: 'Все виджеты' }) -%>
+
+<%- message %>
+<ul>
+    <li>
+        <a href="/static/widgets/my-tasks/index.html">Мои задачи</a>
+    </li>
+    <li>
+        <a href="/static/widgets/label-audio-task-create/index.html">Создание задачи разметки аудио</a>
+    </li>
+    <li>
+        <a href="/static/widgets/record-voice-task-create/index.html">Создание задачи записи аудио</a>
+    </li>    
+    <li>
+        <a href="/static/widgets/view-recordings/index.html">Просмотр записей</a>
+    </li>
+</ul>
+<p>
+    <a href="/logout">logout</a>
+<%- include('foot') -%>

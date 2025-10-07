@@ -1,0 +1,96 @@
+services:
+  # CouchDB Service
+  couchdb:
+    image: couchdb:latest
+    container_name: couchdb
+    restart: always
+    ports:
+      - "5984:5984"
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=password
+    networks:
+      - app-network
+
+  # MongoDB Service
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+
+  # Node.js App Service
+  dyslexia-data:
+    build: ./dyslexia-data
+    container_name: dyslexia-data
+    restart: always
+    links:
+      - nextcloud
+      - couchdb
+      - mongodb  
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./dyslexia-data:/app
+      - /app/node_modules  # Add this line to preserve node_modules
+    environment:
+      - NODE_ENV=development
+      - COUCHDB_URL=http://couchdb:5984
+      - MONGODB_URL=mongodb://mongodb:27017
+    depends_on:
+      - couchdb
+      - mongodb
+    networks:
+      - app-network
+
+  db:
+    image: mariadb:10.6
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    volumes:
+      - db:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=mysqlpass
+      - MYSQL_PASSWORD=mysqlpass
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+    networks:
+      - app-network
+
+  nextcloud:
+    image: nextcloud
+    restart: always
+    ports:
+      - 8080:80
+    links:
+      - db
+    volumes:
+      - nextcloud:/var/www/html
+    environment:
+      - MYSQL_PASSWORD=mysqlpass
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=db
+    networks:
+      - app-network
+
+# Define volumes for persistent data
+volumes:
+  couchdb_data:
+  mongodb_data:
+  nextcloud:
+  db:
+
+
+# Define a shared network
+networks:
+  app-network:
+    driver: bridge
+

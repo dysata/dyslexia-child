@@ -1,0 +1,22 @@
+{
+  "name": "dyslexia-data",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "dependencies": {
+    "cookie-parser": "~1.4.4",
+    "debug": "~2.6.9",
+    "ejs": "^3.1.10",
+    "express": "~4.16.1",
+    "express-basic-auth": "^1.2.1",
+    "express-session": "^1.18.0",
+    "http-errors": "~1.6.3",
+    "http-proxy-middleware": "^3.0.2",
+    "morgan": "~1.9.1",
+    "node-telegram-bot-api": "^0.66.0",
+    "pbkdf2-password": "^1.2.1",
+    "pug": "2.0.0-beta11"
+  }
+}

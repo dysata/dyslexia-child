@@ -1,0 +1,41 @@
+{
+    "_id": "8db4e003e62067c4e04381db1c00202f",
+    "_rev": "2-4942ca524dd9efb162fcfadbb41c4baf",
+    "dataobject": {
+        "files": [
+            {
+                "path": "audio-8db4e003e62067c4e04381db1c00090e-1-wKKZd0bK43.ogg",
+                "mime": "audio/ogg"
+            }
+        ],
+        "produced_by": {
+            "task": "8db4e003e62067c4e04381db1c00090e",
+            "task_series_id": "y01"
+        },
+        "creator": {
+            "age": "34",
+            "sex": "\u0416"
+        },
+        "meta": {
+            "annotation": {
+                "value": [
+                    {
+                        "start": 0.942,
+                        "end": 1.012,
+                        "attributes": {},
+                        "data": {
+                            "note": "sd",
+                            "rquality": "exaggerated"
+                        }
+                    }
+                ],
+                "by": {
+                    "task_id": "1a31ff29d5442512599d05f8e70007e0",
+                    "task_rev": "1-d4b9140fda05e6c85c97fd8855a3b78b",
+                    "task_series_id": "y01aa"
+                },
+                "timestamp": 1741419018826
+            }
+        }
+    }
+}

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>My Tasks</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+ 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
+   <link href="styles/app.css" rel="stylesheet" type="text/css">
+	<script type="text/javascript" src="../../aka/db-communicator.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Мои Задания</h1>
+      </header>
+      <div>
+  <form>
+  <div class="collapse show" id="task_series_settings">
+    <label for="human_id" class="form-label">Provide Task Series ID:</label>
+    <input type="text" class="form-control" id="human_id" aria-describedby="human_id_help">
+    <div id="tasknameHelp" class="form-text">We will ask you to fulfill the tasks associated with this Task Series ID. You should receive your Task Series ID from your supervisor.</div>
+    <button type="button" class="btn btn-primary" id="start_work">Начать работу</button>
+  </div>
+  <br>
+</form>
+<div class="mb-3" id="task_container">
+	<div class="mb-3 border border-primary" id="widget_container">
+	</div>
+	<div id="button_group">
+	<form>
+		<div class="mb-3">
+		  <button type="button" class="btn btn-primary" id="submit_task_result">Отправить и перейти к следующему заданию</button>
+		  <br><br>
+<!--		  
+		  <textarea class="form-control" rows="3" id="human_comment">Provide your comment here</textarea>
+		  <button type="button" class="btn btn-danger" id="cancel_task">Отказаться от задания и перейти к следующему</button>
+-->		  
+		</div>
+	</form>
+	</div>
+	
+</div>
+<script type="text/javascript" src="scripts/app.js"></script>
+ 
+</body>
+</html>

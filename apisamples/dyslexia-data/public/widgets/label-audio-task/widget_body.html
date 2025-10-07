@@ -1,0 +1,120 @@
+    <div class="wrapper">
+      <header>
+        <h2>Label Audio Task</h2>
+		<h3 id="label_audio_task_name"></h3>
+      </header>
+        <div class="container">
+
+            <div id="demo">
+                <p id="subtitle" class="text-center text-info">&nbsp;</p>
+
+                <div id="wave-timeline"></div>
+
+                <div id="waveform">
+                    <!-- Here be waveform -->
+                </div>
+
+                <div class="row" style="margin: 30px 0">
+                    <div class="col-sm-10">
+                        <p>
+						<ul>
+                            <li> Мышкой отметьте область с речевой ошибкой. Границы созданной области и область можно двигать.</li>
+							<li> Кликните мышкой ОДИН РАЗ на области, чтобы проаннотировать область. </li>
+                            <li> Кликните мышкой ОДИН РАЗ на области, чтобы проиграть область. </li>
+							<li> Нажимайте "Save" каждый раз, когда закончили вносить данные по ОБЛАСТИ </li>
+ 							<li> Нажимайте "Отправить перейти к следующему заданию", когда вы закончили с разметкой ВСЕГО ФАЙЛА </li>
+                        </p>
+                    </div>
+
+                    <div class="col-sm-2">
+                        <button class="btn btn-primary btn-block" data-action="play">
+                            <span id="play">
+                                <i class="glyphicon glyphicon-play"></i>
+                                Play
+                            </span>
+
+                            <span id="pause" style="display: none">
+                                <i class="glyphicon glyphicon-pause"></i>
+                                Pause
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <form role="form" name="edit" style="opacity: 0; transition: opacity 300ms linear; margin: 30px 0;">
+                <div class="form-group">
+                    <label for="start">Start</label>
+                    <input class="form-control" id="start" name="start" />
+                </div>
+
+                <div class="form-group">
+                    <label for="end">End</label>
+                    <input class="form-control" id="end" name="end" />
+                </div>
+
+                <div class="form-group">
+                    <label for="note">Note (free text)</label>
+                    <textarea id="note" class="form-control" rows="3" name="note"></textarea>
+                </div>
+				<div class="form-group">
+				<label for="rquality">Оцените звук Р</label>
+				<div class="form-check">
+					<input class="form-check-input" type="radio" name="rquality" id="rquality-nosound" value="no-sound">
+					<label class="form-check-label" for="rquality-nosound">
+					    Нет звука
+					</label>
+				</div>
+				<div class="form-check">
+					<input class="form-check-input" type="radio" name="rquality" id="rquality-bad" value="bad" checked="true">
+					<label class="form-check-label" for="rquality-bad">
+					    Плохой
+					</label>
+				</div>
+				<div class="form-check">
+					<input class="form-check-input" type="radio" name="rquality" id="rquality-good" value="good">
+					<label class="form-check-label" for="rquality-good">
+					    Хороший
+					</label>
+				</div>
+				<div class="form-check">
+					<input class="form-check-input" type="radio" name="rquality" id="rquality-exaggerated" value="exaggerated">
+					<label class="form-check-label" for="rquality-exaggerated">
+					    Утрированный
+					</label>
+				</div>
+
+<!--				<select name="rquality" id="rquality" class="form-select" >
+    <option disabled>Оцените Р</option>
+    <option value="0">0</option>
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+    <option value="4">4</option>
+    <option value="5">5</option>
+   <option value="6">6</option>
+    <option value="7">7</option>
+    <option value="8">8</option>
+    <option value="9">9</option>
+	<option value="10">10</option>
+  </select>
+-->
+				</div>
+				<div class="form-group">
+<!--                <button type="submit" class="btn btn-success btn-block">Save</button> or
+-->
+                <button type="button" class="btn btn-danger btn-block" data-action="delete-region">Delete</button>
+				</div>
+
+            </form>
+
+            <div class="row">
+
+            <div class="footer row">
+                <div class="col-sm-12">
+                    Based on wavesurfer.js by <a href="https://github.com/katspaugh/wavesurfer.js">katspaugh</a>
+                </div>
+            </div>
+        </div>
+
+  </div>
