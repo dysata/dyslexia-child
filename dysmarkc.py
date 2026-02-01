@@ -11,6 +11,12 @@ import torch.nn as nn
 import sys
 import argparse
 import csv
+import os
+import re
+
+
+
+
 
 import pandas as pd
 #python3 dysmark.py -a hwa127/WA125517_m1.wav -o hwa127/WA125517_m1.txt -t 'в нашей деревне'
@@ -108,19 +114,52 @@ class Segment2:
         return self.end - self.start
 
 def main():
-   print('transcriber')
-   parser = argparse.ArgumentParser()
-   parser.add_argument('-a', '--audio', dest='input_name', type=str, required=True,
-                       help='The input sound file name.')
-   parser.add_argument('-t', '--text', dest='text', type=str, required=False, default=None,
-                        help='The text read.')
-   parser.add_argument('-o', '--output', dest='output_name', type=str, required=True,
-                        help='The output report file name.')
-   args = parser.parse_args()
+  print('directory transcriber')
 
-   print(args.input_name)
-   print(args.text)
-   print(args.output_name)
+
+
+  src = sys.argv[1]
+  print(src)
+
+
+
+  print('reading file list...')
+  unsortedList = []
+  for root, dirs, files in os.walk(src):
+     for file in files:
+       path = os.path.join(root, file)
+       size = os.stat(path).st_size #in bytes
+       if size<1000000:
+        if ".wav" in file :# exclude non-dicoms, good for messy folders
+            unsortedList.append(os.path.join(root, file))
+
+
+  print('%s files found.' % len(unsortedList))
+  filein=f"text.csv"
+  reader = csv.reader(open(filein), delimiter='\t',quotechar='|')
+  text=[]
+  for row in reader:
+        text.append(row)
+  print('text loaded '+str(len(text)))
+
+  for filename in unsortedList:
+
+   argsinput_name=filename
+   print(argsinput_name+' is processed')
+   match = re.search(r'\d+.wav', str(argsinput_name))
+   if match:
+        segmindex=match.group()[:-4]
+        print(segmindex)
+   else:
+        segmindex=0
+      
+   print('segment '+str(segmindex))
+   argstexttmp=text[int(segmindex)-1]
+   argstext=argstexttmp[0]
+   print(argstext)
+   print(' text of segment is'+argstext)
+   argsoutput_name=argsinput_name.replace('.wav', '.txt')
+   print(argsoutput_name)
 
 # load model and tokenizer
 #   processor = Wav2Vec2Processor.from_pretrained("dysata/Wav2Vec2-Ru-Child")
@@ -128,9 +167,9 @@ def main():
 
 #   model = Wav2Vec2ForCTC.from_pretrained("dysata/Wav2Vec2-Ru-Child")
    model = Wav2Vec2ForCTC.from_pretrained("bond005/wav2vec2-large-ru-golos")
-   aw=args.input_name
+   aw=argsinput_name
    audio, sr = librosa.load(aw, sr=16000)
-   true_texts_in_batch=[args.text]
+   true_texts_in_batch=[argstext]
    sounds_in_batch=[audio]
    processed = processor(sounds_in_batch, sampling_rate=16_000,
                       return_tensors="pt", padding="longest")
@@ -321,8 +360,8 @@ def main():
               if segments2[j].labelt1 == segments2[i].labelf2:  
                 segments2[i].mark=segments2[i].mark+'8'
                 segments2[j].mark=segments2[j].mark+'8'
-   print(args.output_name)
-   Scsvfile = open(args.output_name, 'a', newline='')
+   print(argsoutput_name)
+   Scsvfile = open(argsoutput_name, 'a', newline='')
    Swriter = csv.writer(Scsvfile, delimiter=' ',quotechar='|', quoting=csv.QUOTE_MINIMAL)
    for seg in segments2:
       Swriter.writerow([seg])
