@@ -1,0 +1,12 @@
+dataset==1.6.2
+datasets==3.3.2
+librosa==0.10.2.post1
+matplotlib==3.6.3
+matplotlib-inline==0.1.6
+nltk==3.9.1
+numpy==1.26.4
+torch==2.7.1
+torchaudio==2.7.1
+torchvision==0.22.1
+transformers==4.49.0
+typing_extensions==4.10.0
