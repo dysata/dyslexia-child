@@ -1,3 +1,0 @@
-#requirements to audiofile suitable
-wav
-16kHz
