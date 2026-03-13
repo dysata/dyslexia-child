@@ -1,0 +1,6 @@
+test*.wav
+text.txt
+.venv/*
+.idea
+.idea/*
+

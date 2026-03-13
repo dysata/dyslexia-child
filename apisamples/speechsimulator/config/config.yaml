@@ -1,0 +1,5 @@
+common:
+  port: 8080 # deafault port, can be changed here or with --port arg
+postgres:
+  database_url: postgres://guest@localhost/game
+  require_ssl: false 

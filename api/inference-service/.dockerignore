@@ -1,0 +1,93 @@
+# Python артефакты
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Виртуальные окружения (не нужны внутри Docker)
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE и редакторы кода
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Тесты и покрытие (не нужны в продакшене)
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+tests/
+test_*.py
+*_test.py
+conftest.py
+pytest.ini
+tox.ini
+
+# Документация и конфиги разработки
+*.md
+README*
+LICENSE
+CHANGELOG
+docs/
+.git/
+.gitignore
+.dockerignore
+Dockerfile*
+docker-compose*.yml
+Makefile
+
+# Секреты и локальные конфиги (КРИТИЧНО!)
+# Никогда не копируйте локальные пароли или ключи в образ
+.env.local
+.env.*.local
+secrets/
+*.key
+*.pem
+!requirements.txt # Исключение: requirements.txt нужен обязательно
+
+# Базы данных и файлы данных (Они будут в Volume!)
+# Если вы используете Volume для /app/data, эти файлы не должны попадать в образ
+*.db
+*.sqlite
+*.sqlite3
+data/
+storage/
+uploads/
+logs/
+*.log
+
+#  Временные файлы
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp

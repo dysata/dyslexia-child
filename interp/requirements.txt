@@ -1,0 +1,12 @@
+catboost
+umap-learn
+jupyter
+torch
+datasets
+transformers
+matplotlib
+numpy
+nltk
+librosa
+pandas
+

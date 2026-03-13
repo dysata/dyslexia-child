@@ -1,0 +1,14 @@
+catboost
+seaborn
+psutils
+librosa
+jupyter
+torch
+datasets
+transformers
+matplotlib
+numpy
+nltk
+librosa
+pandas
+

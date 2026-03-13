@@ -1,82 +1,61 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)(https://github.com/dysata/dyslexia-child/blob/master/LICENSE)
 ![Python 3.12](https://img.shields.io/badge/python-3.12-green.svg)
 
-# dyslexia-child
 
-This project represents a python pipeline, library and service for automatic speech recognition and transcribing in Russian and marking the 20 types of dyslexia marks.
+# dyslexia-child: технология распознавания речи для диагностики дислексии у детей
 
-Different dyslexia markers cause of different brain disorders and require different marks in neurodata records.
+## Лицензия
+Код распространяется по [MIT-лицензии](LICENSE.txt)
 
+## Ссылки на модели и датасеты
+- [Дообученная модель архитектуры wav2vec2: dysata/Wav2Vec2-Ru-Child](https://huggingface.co/dysata/Wav2Vec2-Ru-Child/tree/main). См. описание модели на [карточке на HF](https://huggingface.co/dysata/Wav2Vec2-Ru-Child) и подробнее в документе [docs/model.pdf](docs/model.pdf) в репозитории проекта.
+- Обученная модель CatBoost находится в файле [model/catboost_r_model.cbm](model/catboost_r_model.cbm)
+- Наборы данных, использованные в обучении моделей расположены в [репозитории на Hugging Face](https://huggingface.co/dysata/datasets). Описание датасетов дано в документе [docs/dataset.pdf](docs/dataset.pdf) 
 
-## Installation
+## Назначение программного комплекса
+Программный комплекс реализует модель анализа аудиозаписей на предмет выявления признаков-маркеров дислексии (см. описание маркеров в  документе [docs/tasks.py](docs/tasks.py)), сервисы для сбора и маркировки данных, обращения к модели с целью инференса, а также примеры приложений (см. описание примеров в документе [docs/newapps.pdf](docs/newapps.pdf)). 
 
-This project uses a deep learning, therefore a key dependency is a deep learning framework. I prefer [PyTorch](https://pytorch.org/), and you need to install CPU- or GPU-based build of PyTorch ver. 2.3 or later. You can see more detailed description of dependencies in the `requirements.txt`.
+## Гибридная модель 
+В реализации модели применено несколько методов: нейросеть wav2vec2 для контекстуального анализа звука, алгоритмы выравнивания звуковых последовательностей, продукционные правила для определения типа ошибки при сопоставлении последовательностей, модель градиентного бустинга на деревьях решений для классификации качества произношения. подробнее модель описана в документе [docs/model.pdf](docs/model.pdf).  
 
-Other important dependencies are:
+## Развертывание программного комплекса
+Развертывания программного комплекса осущствляется с помощью инструментация Docker Compose. Шаблон конфигурационного файла: [docker-compose.yml.template](docker-compose.yml.template). Подробная инструкция приводится в документе [docs/deployment.pdf](docs/deployment.pdf).
 
-- [Transformers](https://github.com/huggingface/transformers): a Python library for building neural networks with Transformer architecture;
-- [FFmpeg](https://ffmpeg.org): a software for handling video, audio, and other multimedia files.
+## Программный интерфейс (порядок использования модели в приложениях), Python-модули и веб-сервис
+Модель реализована основными Python-модулями [model/dysmarkccls_clean.py](model/dysmarkccls_clean.py), [model/statdiag.py](model/statdiag.py). Эти программы могут быть применены непосредственно в режиме интерфейса командной строки, могут включаться в качестве модулей в прикладные программы, а также обращение к ним реализовано через REST-сервис, который поднимается при развертывании программного комплекса. Подробная документация по использованию модели приведена в документе [docs/apidoc.pdf](docs/apidoc.pdf).
 
-The first dependency Python library, also it might be used FFmpeg for audio conversion as described in the instructions https://ffmpeg.org/download.html.
+## Интерпретация обученной нейросети
 
-Also, the Python 3.12 or later is required. The best with [Python virtual environment](https://docs.python.org/3/glossary.html#term-virtual-environment) witch can be created with [Anaconda](https://www.anaconda.com). To install this project in the selected virtual environment, you should activate this environment and run the following commands in the Terminal:
+Описание интерпретации обученной нейросети приведено в документе [docs/interp.pdf](docs/interp.pdf).
+В каталоге interp приведен [Python-ноутбук](interp.ipynb) с реализацией анализа, описанного в документе. См. [инструкцию](interp/README.md) по запуску ноутбука.
 
-```shell
-git clone https://github.com/dysata/dyslexia-child.git
-cd dyslexia-child
-python -m pip install -r requirements.txt
-```
+## Перечень направлений прикладного использования
+Предлагаются следующие направления прикладного использования результатов проекта:
+- разработка приложений для скрининговой диагностики дислексии, а также других состояний, связанных с нарушениями речи, необходимо проводить анализ динамики результатов обследований,
+- разработка приложений для поддержки работы врачей, занимающихся диагностикой дислексии, логопедов, психологов: системы поддержки принятия врачебных решений (СППВР/CDSS),
+- разработка приложений для организации нейрофизиологических исследований, связанных с дислексическими нарушениями, нарушениями речи в целом: EdTech
+- разработка решений для сбора датасетов – размеченных аудиозаписей,
+- тренажеры чтения, речи, в том числе в форме игр,
+- системы распознавания речи (ASR): анализ слабых мест моделей распознавания речи, генерация синтетических данных с ошибками, характерными для лиц с проблемами речи (на основе статистики маркеров) 
 
-You can choose the level of pipeline.
-The first level is the direct transcribation of audio reading and compareson with the prerequested one.
-The second level is pass the requred logits parts to the pretrained classifier.
-The third level is collect the customly marked sounds/logits in system and api for the data agregation and labeling, and train the classifier. 
+## Минимальные технические требования
 
-## 1st level Usage
+- процессор: 64-битный процессор архитектуры x86-64, не ниже Intel Core i3 2-го поколения, ниже не тестировалось – для слабых процессоров с малым количеством ядер (относительно приведенной конфигурации и тестов выше в разделе 9.1) следует ожидать долгого времени обработки аудио;
+- память не менее доступных 10Гб под модель и данные в связи с большим объемом модели;
+- размер на диске не менее 40Гб под модель и библиотеки;
+- операционная система: тестирование проведено на Linux Ubuntu 24.04.3 LTS.
 
-### Command prompt
+комфортная работа наблюдается в тестовом развертывании при таких условиях:
 
-Usage of the **dyslexia-child**. You have to write the following command in your command prompt:
+- Процессор: 2 х Intel(R) Xeon(R) CPU E5-2690 v2 @ 3.00GHz
+- Общий объем памяти: 128 ГиБ
+- Диск: TOSHIBA MK3261GS,  298 GiB
+- ОС: Ubuntu 24.04.3 LTS
 
-```shell
-python3 dysmark.py \
-    -a /path/to/your/sound/or/video.wav
-    -t /path/to/your/text.txt
-    -o /path/to/your/report.txt
-```
-
-The **1st** argument `-i` specifies the name of the source audio in wav 16kHz format.
-The audio can be converted by ffmpeg as
-ffmpeg -i /path/to/your/sound/or/video/to/convert -acodec pcm_s16le -ar 16000 /path/to/your/sound/or/video.wav
-
-The **2st** argument `-t` specifies the name of the text, which is read by person.
-
-The **3st** argument `-o` specifies the name of the report with the results with marks.
-
-Other arguments are not required. 
-The argument `-m` points to the directory with all needed pre-downloaded models. 
-
-If you don't specify the argument `-m`, then all needed models will be automatically downloaded from Huggingface hub:
-
-- for Russian:
-  1) [dysata/Wav2Vec2-Ru-Child](https://huggingface.co/dysata/Wav2Vec2-Ru-Child),
-
-
-
-In turn, project includes additional subdirectories:
-archi - architecture for levels
-api - api for the data agregation and labeling
-tasks - texts, words and picktures selected
-external - possible applications based
-
-
-
-
-If your computer has CUDA-compatible GPU, and your PyTorch has been correctly installed for this GPU, then the **Pisets** will transcribe your speech very quickly. So, the real-time factor (xRT), defined as the ratio between the time it takes to process the input and the duration of the input, is approximately 0.15 - 0.25 (it depends on the concrete GPU type). But if you use CPU only, then the **Pisets** will calculate your speech transcription significantly slower (xRT is approximately 1.0 - 1.5).
 
 ## Contact
 
-Pavel Rudich   - [pav3ru@yandex.ru](mailto:pav3ru@yandex.ru)
+Pavel Rudich   - [pavel@rudych.ru](mailto:pavel@rudych.ru)
 
 ## Acknowledgment
 
@@ -86,4 +65,4 @@ The [Foundation for Assistance to Small Innovative Enterprises](https://fasie.ru
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License. See [LICENSE.txt](LICENSE.txt) for more information.

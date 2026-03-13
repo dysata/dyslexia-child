@@ -1,0 +1,276 @@
+openapi: 3.0.3
+info:
+  title: Speech Dyslexia Screening API
+  description: |
+    Сервис для анализа речи испытуемых на признаки дислексии.
+    Принимает пару "текст + аудиозапись", возвращает разметку по звукам и диагностическое заключение.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: https://api.dyslexia-screening.example.com/v1
+    description: Production server
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /speech-analyses:
+    post:
+      summary: Создать анализ речи
+      description: |
+        Отправляет текст и аудиозапись для анализа.
+        Возвращает массив троек `[ожидаемый, распознанный, маркер]`.
+        Поддерживает синхронный и асинхронный режимы.
+      parameters:
+        - name: async
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: |
+            Если `true`, обработка будет асинхронной.
+            Сервер вернёт `202 Accepted` и URI задачи в заголовке `Location`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-
+            schema:
+              type: object
+              properties:
+                text_file:
+                  type: string
+                  format: binary
+                  description: Текстовый файл в кодировке UTF-8 (.txt)
+                audio_file:
+                  type: string
+                  format: binary
+                  description: Аудиофайл (рекомендуется .wav, 16kHz, mono)
+              required:
+                - text_file
+                - audio_file
+      responses:
+        '201':
+          description: Синхронный результат готов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpeechAnalysisResult'
+        '202':
+          description: Асинхронная обработка запущена
+          headers:
+            Location:
+              description: URI для получения результата
+              schema:
+                type: string
+                format: uri
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task_id:
+                    type: string
+                    example: analysis_123e4567-e89b-12d3-a456-426614174000
+                  status:
+                    type: string
+                    enum: [processing]
+                    example: processing
+
+  /speech-analyses/{analysis_id}:
+    get:
+      summary: Получить результат анализа речи
+      description: |
+        Используется только в асинхронном режиме.
+        Возвращает результат, когда задача завершена.
+      parameters:
+        - name: analysis_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^analysis_[a-f0-9\-]+$
+      responses:
+        '200':
+          description: Анализ завершён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpeechAnalysisResult'
+        '202':
+          description: Задача ещё в процессе
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [processing]
+                  progress:
+                    type: integer
+                    minimum: 0
+                    maximum: 100
+                    description: Опциональный прогресс в процентах
+        '404':
+          description: Задача не найдена (истекла TTL или неверный ID)
+        '500':
+          description: Ошибка обработки
+
+  /diagnostic-reports:
+    post:
+      summary: Создать диагностический отчёт
+      description: |
+        Принимает массив результатов анализа (включая метаданные)
+        и возвращает итоговое заключение по группе риска и статистике маркеров.
+      parameters:
+        - name: async
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Асинхронный режим (редко нужен, но поддерживается)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                analyses:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/SpeechAnalysisResult'
+                  minItems: 1
+              required:
+                - analyses
+      responses:
+        '201':
+          description: Диагностический отчёт готов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReport'
+        '202':
+          description: Асинхронная обработка запущена
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+
+  /diagnostic-reports/{report_id}:
+    get:
+      summary: Получить результат диагностического отчёта
+      parameters:
+        - name: report_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^report_[a-f0-9\-]+$
+      responses:
+        '200':
+          description: Отчёт готов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticReport'
+        '202':
+          description: Обработка в процессе
+        '404':
+          description: Отчёт не найден
+
+  /markers:
+    get:
+      security: []  # Публичный эндпоинт — без авторизации
+      summary: Получить справочник маркеров
+      description: Список всех возможных маркеров нарушений и их описаний.
+      responses:
+        '200':
+          description: Справочник маркеров
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+                example:
+                  "0": "Нормальное произношение"
+                  "1": "Замена согласного"
+                  "a": "Удлинение гласного"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        Ваш уникальный API-ключ. Получите его в личном кабинете.
+        Пример: `X-API-Key: abc123def456`
+
+  schemas:
+    SpeechAnalysisResult:
+      type: object
+      properties:
+        id:
+          type: string
+          example: analysis_123e4567-e89b-12d3-a456-426614174000
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-02-02T10:30:00Z"
+        triples:
+          type: array
+          items:
+            type: array
+            minItems: 3
+            maxItems: 3
+            items:
+              type: string
+            example: ["a", "a", "0"]
+      required:
+        - id
+        - created_at
+        - triples
+
+    DiagnosticReport:
+      type: object
+      properties:
+        risk_group:
+          type: string
+          enum:
+            - "подозрение на дислексию"
+            - "имеются нарушения, требуется наблюдение"
+            - "отсутствуют значимые нарушения"
+          example: "подозрение на дислексию"
+        marker_statistics:
+          type: object
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 100
+          example:
+            "0": 85.2
+            "1": 3.1
+            "a": 7.8
+        temporal_analysis:
+          type: object
+          properties:
+            improving_markers:
+              type: array
+              items:
+                type: string
+            persistent_issues:
+              type: array
+              items:
+                type: string
+          description: Опциональный анализ динамики по времени
+      required:
+        - risk_group
+        - marker_statistics

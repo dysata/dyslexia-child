@@ -1,0 +1,184 @@
+{
+  "summary": {
+    "total_tests": 6,
+    "passed": 6,
+    "failed": 0,
+    "success_rate": 100.0
+  },
+  "detailed_results": [
+    {
+      "test_name": "File does not exist",
+      "passed": true,
+      "expected_quality": "bad",
+      "actual_quality": "bad",
+      "expected_problem": "not found",
+      "actual_problem": "text file not found",
+      "error": null,
+      "output": {
+        "triples": [
+          [
+            "__quality__",
+            "text file not found",
+            "0"
+          ]
+        ],
+        "quality": "bad",
+        "problem": "text file not found"
+      }
+    },
+    {
+      "test_name": "Wrong file extension (.mp3)",
+      "passed": true,
+      "expected_quality": "bad",
+      "actual_quality": "bad",
+      "expected_problem": "not a wav file",
+      "actual_problem": "not a wav file",
+      "error": null,
+      "output": {
+        "triples": [
+          [
+            "__quality__",
+            "not a wav file",
+            "0"
+          ]
+        ],
+        "quality": "bad",
+        "problem": "not a wav file"
+      }
+    },
+    {
+      "test_name": "Invalid WAV content",
+      "passed": true,
+      "expected_quality": "bad",
+      "actual_quality": "bad",
+      "expected_problem": "not a valid audio",
+      "actual_problem": "not a valid audio file",
+      "error": null,
+      "output": {
+        "triples": [
+          [
+            "__quality__",
+            "not a valid audio file",
+            "0"
+          ]
+        ],
+        "quality": "bad",
+        "problem": "not a valid audio file"
+      }
+    },
+    {
+      "test_name": "Wrong sample rate (8kHz)",
+      "passed": true,
+      "expected_quality": "bad",
+      "actual_quality": "bad",
+      "expected_problem": "SR=8000",
+      "actual_problem": "SR=8000, should be 16kHz",
+      "error": null,
+      "output": {
+        "triples": [
+          [
+            "__quality__",
+            "SR=8000, should be 16kHz",
+            "0"
+          ]
+        ],
+        "quality": "bad",
+        "problem": "SR=8000, should be 16kHz"
+      }
+    },
+    {
+      "test_name": "Good quality audio",
+      "passed": true,
+      "expected_quality": "good",
+      "actual_quality": "good",
+      "expected_problem": null,
+      "actual_problem": null,
+      "error": null,
+      "output": {
+        "triples": [
+          [
+            "ф",
+            "ф",
+            "0"
+          ],
+          [
+            "р",
+            "р",
+            "0"
+          ],
+          [
+            "у",
+            "у",
+            "0"
+          ],
+          [
+            "к",
+            "к",
+            "0"
+          ],
+          [
+            "т",
+            "т",
+            "0"
+          ],
+          [
+            "ы",
+            "ы",
+            "0"
+          ]
+        ],
+        "quality": "good"
+      }
+    },
+    {
+      "test_name": "Bad match quality (>40% errors)",
+      "passed": true,
+      "expected_quality": "bad",
+      "actual_quality": "bad",
+      "expected_problem": "more than",
+      "actual_problem": "more than 57% errors",
+      "error": null,
+      "output": {
+        "triples": [
+          [
+            "п",
+            "ф",
+            "6"
+          ],
+          [
+            "п",
+            "р",
+            "6"
+          ],
+          [
+            "у",
+            "у",
+            "0"
+          ],
+          [
+            "у",
+            "у",
+            "0"
+          ],
+          [
+            "г",
+            "к",
+            "6"
+          ],
+          [
+            "т",
+            "т",
+            "0"
+          ],
+          [
+            "а",
+            "ы",
+            "6"
+          ]
+        ],
+        "quality": "bad",
+        "problem": "more than 57% errors"
+      }
+    }
+  ]
+}

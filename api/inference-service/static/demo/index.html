@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Модельное приложение: анализ аудиозаписей</title>
+    <link rel="stylesheet" href="../../static/demo/style.css">
+    <style>
+        .loading  для скрининга{
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        #word-input {
+            width: 100%;
+            height: 80px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Модельное приложение: анализ аудиозаписей</h1>
+
+        <div id="api-key-section">
+            <label for="api-key-input">Введите ваш API-ключ:</label><br>
+            <input type="password" id="api-key-input" placeholder="your-secret-api-key..." autocomplete="off">
+            <button id="submit-key-btn">Продолжить</button>
+        </div>
+
+        <div id="main-app" style="display:none;">
+            <p>Если хотите заменить список по умолчанию, введите слова для произношения (по одному на строку) и нажмите 'использовать мой список':</p>
+            <textarea id="word-input" placeholder="дрова
+дракон
+корова"></textarea>
+            <button id="use-custom-words">Использовать мой список</button>
+            <hr>
+            <div id="word-display">Нажмите "Начать тест", чтобы начать</div>
+            <div id="controls">
+                <button id="start-btn">Начать тест</button>
+                <button id="record-btn" disabled>Записать</button>
+                <button id="stop-btn" disabled>Остановить</button>
+            </div>
+        </div>
+
+        <div id="status"></div>
+        <div id="result" style="display:none;"></div>
+    </div>
+
+    <script src="../../static/dyslexia-client.js"></script>
+    <script>
+        const API_BASE_URL = '../..';
+        let WORDS = ["дрова", "дракон", "корова"]; // default
+
+        let client;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let currentWordIndex = 0;
+        let analysisTasks = [];
+
+        // DOM
+        const apiKeyInput = document.getElementById('api-key-input');
+        const submitKeyBtn = document.getElementById('submit-key-btn');
+        const apiKeySection = document.getElementById('api-key-section');
+        const mainApp = document.getElementById('main-app');
+        const wordInput = document.getElementById('word-input');
+        const useCustomBtn = document.getElementById('use-custom-words');
+        const wordDisplay = document.getElementById('word-display');
+        const startBtn = document.getElementById('start-btn');
+        const recordBtn = document.getElementById('record-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const statusDiv = document.getElementById('status');
+        const resultDiv = document.getElementById('result');
+
+        submitKeyBtn.addEventListener('click', () => {
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                alert("Пожалуйста, введите API-ключ");
+                return;
+            }
+            client = new DyslexiaClient(API_BASE_URL, apiKey);
+            apiKeySection.style.display = 'none';
+            mainApp.style.display = 'block';
+        });
+
+        useCustomBtn.addEventListener('click', () => {
+            const text = wordInput.value.trim();
+            if (text) {
+                WORDS = text.split('\n').map(w => w.trim()).filter(w => w);
+                if (WORDS.length === 0) {
+                    alert("Введите хотя бы одно слово");
+                    return;
+                }
+                alert(`Загружено ${WORDS.length} слов`);
+            }
+        });
+
+        function downloadWav(wavBlob, filename = "recording.wav") {
+            const url = URL.createObjectURL(wavBlob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        // === КОНВЕРТАЦИЯ В WAV ===
+        async function webmToWav(webmBlob) {
+            const arrayBuffer = await webmBlob.arrayBuffer();
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+            const channel = audioBuffer.getChannelData(0);
+            const sampleRate = audioBuffer.sampleRate;
+            const length = channel.length;
+            const wavBuffer = new ArrayBuffer(44 + length * 2);
+            const view = new DataView(wavBuffer);
+
+            const writeString = (offset, str) => {
+                for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+            };
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + length * 2, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, length * 2, true);
+
+            for (let i = 0; i < length; i++) {
+                const val = Math.max(-1, Math.min(1, channel[i]));
+                view.setInt16(44 + i * 2, val * 32767, true);
+            }
+
+            return new Blob([wavBuffer], { type: 'audio/wav' });
+        }
+
+        // === ЗАПИСЬ ===
+        async function initRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+                mediaRecorder = new MediaRecorder(stream, { mimeType });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) audioChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const webmBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const wavBlob = await webmToWav(webmBlob);
+                    handleRecordingComplete(wavBlob);
+                };
+            } catch (err) {
+                statusDiv.innerHTML = `<span class="error">Микрофон: ${err.message}</span>`;
+            }
+        }
+
+        function handleRecordingComplete(wavBlob) {
+            downloadWav(wavBlob, `word-${WORDS[currentWordIndex]}.wav`);
+            const word = WORDS[currentWordIndex];
+            statusDiv.textContent = `Отправка "${word}" на анализ...`;
+            client.analyzeSpeech(word, wavBlob)
+                .then(({ statusUrl }) => {
+                    analysisTasks.push({ word, statusUrl });
+                    currentWordIndex++;
+                    if (currentWordIndex < WORDS.length) {
+                        showNextWord();
+                        recordBtn.disabled = false;
+                        stopBtn.disabled = true;
+                    } else {
+                        finishRecording();
+                    }
+                })
+                .catch(e => {
+                    statusDiv.innerHTML = `<span class="error">Ошибка: ${e.message}</span>`;
+                });
+        }
+
+        function showNextWord() {
+            wordDisplay.textContent = "Нажмите 'Записать' и скажите '" + WORDS[currentWordIndex] + "', затем нажмите 'Остановить'";
+            recordBtn.disabled = false;
+        }
+
+        // === POLLING WITH VISUAL FEEDBACK ===
+        async function finishRecording() {
+            wordDisplay.textContent = "Все слова записаны. Ожидание результатов анализа...";
+            recordBtn.disabled = true;
+            startBtn.disabled = true;
+
+            statusDiv.innerHTML = '<span>Ожидание ответа от сервера <span class="spinner"></span></span>';
+            let elapsedTime = 0;
+            const timer = setInterval(() => {
+                elapsedTime += 1;
+                statusDiv.innerHTML = `<span>Прошло ${elapsedTime} сек. Ожидание... <span class="spinner"></span></span>`;
+            }, 1000);
+
+            const finalAnalyses = [];
+            let completedCount = 0;
+
+            const pollTask = async (task) => {
+                while (true) {
+                    try {
+                        const res = await client.getAnalysisResult(task.statusUrl);
+                        if (res.status === 'completed') {
+			    finalAnalyses.push({
+				    word: task.word,
+				    ...res.result
+			    });
+                            completedCount++;
+                            if (completedCount === analysisTasks.length) {
+                                clearInterval(timer);
+                                runDiagnosis(finalAnalyses);
+                            }
+                            return;
+                        } else if (res.status === 'processing') {
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        } else {
+                            throw new Error("Unexpected task status");
+                        }
+                    } catch (e) {
+                        clearInterval(timer);
+                        statusDiv.innerHTML = `<span class="error">Ошибка при опросе задачи: ${e.message}</span>`;
+                        return;
+                    }
+                }
+            };
+
+            analysisTasks.forEach(task => pollTask(task));
+        }
+
+        async function runDiagnosis(analyses) {
+            statusDiv.innerHTML = '<span>Формирование заключения <span class="spinner"></span></span>';
+            let elapsedTime = 0;
+            const timer = setInterval(() => {
+                elapsedTime += 1;
+                statusDiv.innerHTML = `<span>Прошло ${elapsedTime} сек. Формирование заключения... <span class="spinner"></span></span>`;
+            }, 1000);
+
+            try {
+                const { statusUrl } = await client.diagnose(analyses);
+                const poll = async () => {
+                    const res = await client.getDiagnosisResult(statusUrl);
+                    if (res.status === 'completed') {
+                        clearInterval(timer);
+                        showFinalResult(res.result, analyses);
+                    } else {
+                        setTimeout(poll, 2000);
+                    }
+                };
+                poll();
+            } catch (e) {
+                clearInterval(timer);
+                statusDiv.innerHTML = `<span class="error">Ошибка диагностики: ${e.message}</span>`;
+            }
+        }
+
+function showFinalResult(report, analyses) {
+    statusDiv.style.display = 'none';
+    resultDiv.style.display = 'block';
+
+    // Расчёт процентов
+    const total = report.total_phonemes || report.total_markers || 1;
+    let statsHtml = '<ul>';
+    for (const [marker, count] of Object.entries(report.marker_statistics)) {
+        const percent = ((count / total) * 100).toFixed(1);
+        statsHtml += `<li>Маркер "${marker}": ${count} (${percent}%)</li>`;
+    }
+    statsHtml += '</ul>';
+
+    // === ТАБЛИЦА ДЕТАЛИЗАЦИИ ===
+    let tableHtml = `
+        <h3>Детализация по фонемам</h3>
+        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+            <thead>
+                <tr>
+                    <th>Слово</th>
+                    <th>Ожидаемая<br>фонема</th>
+                    <th>Распознанная<br>фонема</th>
+                    <th>Маркер</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    analyses.forEach(analysis => {
+        const word = analysis.word || '-'; //
+
+        analysis.triples.forEach(triple => {
+            const [expected, recognized, marker] = triple;
+            tableHtml += `
+                <tr>
+                    <td>${word}</td>
+                    <td>${expected}</td>
+                    <td>${recognized}</td>
+                    <td>${marker}</td>
+                </tr>
+            `;
+        });
+    });
+
+    tableHtml += `
+            </tbody>
+        </table>
+    `;
+
+    resultDiv.innerHTML = `
+        <h2>Результат диагностики</h2>
+        <p><strong>Группа риска:</strong> ${report.risk_group}</p>
+        <p><strong>Всего фонем:</strong> ${report.total_phonemes || '-'}</p>
+        <p><strong>Всего маркеров:</strong> ${report.total_markers || '-'}</p>
+        <p><strong>Норма:</strong> ${report.norma || '-'}</p>
+        <h3>Статистика маркеров:</h3>
+        ${statsHtml}
+        ${tableHtml}
+    `;
+}
+        // === ОБРАБОТЧИКИ ===
+        startBtn.addEventListener('click', async () => {
+            currentWordIndex = 0;
+            analysisTasks = [];
+            await initRecording();
+            showNextWord();
+            startBtn.disabled = true;
+        });
+
+        recordBtn.addEventListener('click', () => {
+            audioChunks = []; // critical reset
+            mediaRecorder.start();
+            recordBtn.disabled = true;
+            stopBtn.disabled = false;
+        });
+
+        stopBtn.addEventListener('click', () => {
+            mediaRecorder.stop();
+            stopBtn.disabled = true;
+        });
+    </script>
+</body>
+</html>

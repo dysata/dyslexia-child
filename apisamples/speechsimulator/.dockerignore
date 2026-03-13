@@ -1,0 +1,23 @@
+# apisamples/speechsimulator/.dockerignore
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.env
+.venv/
+venv/
+ENV/
+storage/
+env/
+*.log
+.git/
+.github/
+.idea/
+.vscode/
+*.md
+certs/              # Don't copy SSL certs into prod image!
+tests/
+pytest.ini
+.pytest_cache/
+

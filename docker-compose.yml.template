@@ -1,0 +1,219 @@
+services:
+  # --- INIT SERVICE (Runs once, then exits) ---
+  model-init:
+    image: python:3.12.3-slim  #MUST match the Python version required by the model
+    container_name: model-init-job
+    volumes:
+      - ./model:/app/model
+      - hf_cache:/cache
+    environment:
+      - HF_HOME=/cache
+    command: >
+      bash -c "
+        chmod +x /app/model/init_venv.sh &&
+        /app/model/init_venv.sh &&
+        echo 'Pre-downloading HuggingFace model using venv python...' &&
+        /app/model/venv/bin/python -u /app/model/download_model.py &&
+        echo 'Fixing cache permissions for UID 1000...' &&
+        #CHANGE OWNERSHIP TO 1000:1000 (appuser)
+        chown -R 1000:1000 /cache &&
+        echo 'Permissions fixed. Exiting.'        
+        #        /app/model/venv/bin/python -c 'from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC; print(\"Downloading Processor...\"); Wav2Vec2Processor.from_pretrained(\"dysata/Wav2Vec2-Ru-Child\"); print(\"Downloading Model...\"); Wav2Vec2ForCTC.from_pretrained(\"dysata/Wav2Vec2-Ru-Child\"); print(\"Done!\")'
+      "
+    restart: "no" # Do not restart automatically after success/failure
+    networks:
+      - app-network
+
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"  # для HTTPS
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl  
+      - ./nginx/logs:/var/log/nginx
+      - ./nginx/html:/usr/share/nginx/html:ro
+    depends_on:
+      - datamgmt
+      - games
+      - inference
+    networks:
+      - app-network
+  # CouchDB Service
+  couchdb:
+    image: couchdb:latest
+    container_name: couchdb
+    restart: always
+      #    ports:
+      #      - 8080:5984
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD= #TODO: set password
+      - COUCHDB_LOG_LEVEL=info
+    networks:
+      - app-network
+  # MongoDB Service
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - app-network
+  # Node.js App Service
+  datamgmt:
+    build: ./api/datamgmt/dyslexia-data
+    container_name: datamgmt
+    restart: always
+    volumes:
+      - ./api/datamgmt/dyslexia-data:/app
+      - /app/node_modules  # preserve node_modules
+    environment:
+      - BASE_URL=https:DOMAIN/datamgmt #TODO: set domain name
+      - NODE_ENV=production
+      - COUCHDB_URL=http://couchdb:5984
+      - MONGODB_URL=mongodb://mongodb:27017
+      - NEXTCLOUD_INTERNAL=http://nextcloud:80
+      - PUBLIC_PATH=/datamgmt
+      - NEXTCLOUD_PASSWORD= #TODO: set password
+      - PASSWORD= #TODO: set datamgmp service password
+      - COUCHDB_PASSWORD= #TODO: set couchDB password
+      - TELEGRAM_TOKEN= #TODO: set telegram token  
+      - TELEGRAM_PROXY_URL=http://usename:password@host:port #TODO: set proxy data if needed
+    depends_on:
+      - couchdb
+      - mongodb
+      - nextcloud
+    networks:
+      - app-network
+        #    healthcheck:
+        #      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+        #      interval: 30s
+        #      timeout: 10s
+        #      retries: 3
+
+  db:
+    image: mariadb:10.6
+    container_name: nextcloud-db
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    volumes:
+      - db:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=mysqlpass
+      - MYSQL_PASSWORD=mysqlpass
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_ROOT_HOST=%
+    networks:
+      - app-network
+
+#https://github.com/s0riak/nextcloud_docker_path/
+  nextcloud:
+    image: nextcloud:latest
+    container_name: nextcloud
+    restart: always
+    environment:
+      - MYSQL_PASSWORD=mysqlpass
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_HOST=db
+      - OVERWRITEHOST=DOMAN #TODO: set DOMAIN 
+      - OVERWRITEWEBROOT=/nextcloud
+      - OVERWRITEPROTOCOL=https  # 
+      - OVERWRITECLIURL=https://DOMAIN/nextcloud  #TODO: set DOMAIN
+#      - TRUSTED_PROXIES=172.16.0.0/12
+    volumes:
+      - nextcloud:/var/www/html
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+
+  # Python aiohttp + WebRTC based game service
+  games:
+    build: ./apisamples/speechsimulator
+    container_name: games
+    restart: always
+      #    ports:
+      #      - 8080:8000
+    environment:
+      - ENV=production
+      - BASE_PATH=/games
+      - PORT=8000
+      - HOST=0.0.0.0
+        #      - PYTHONPATH=/app/model:${$PYTHONPATH}
+      - MODEL_SCRIPT_PATH=/app/model/dysmarkccls_clean.py
+      - MODEL_PYTHON_PATH=/app/model/venv/bin/python
+      - DIAGNOSTIC_SCRIPT_PATH=/app/model/stat.py
+      - DIAGNOSTIC_PYTHON_PATH=/app/model/venv/bin/python
+    volumes:
+      - games_storage:/app/storage
+      - ./model:/app/model:ro
+    networks:
+      - app-network
+        #    healthcheck:
+        #      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+        #      interval: 30s
+        #      timeouts: 10s
+        #      retries: 3
+
+  # Python FastAPI service
+  inference:
+    build: ./api/inference-service
+    container_name: inference
+    restart: always
+    depends_on:
+      model-init:
+        condition: service_completed_successfully
+      #    ports:
+      #      - 8080:8001
+    environment:
+      - BASE_PATH=/api
+      - ENV=production
+      - DATABASE_URL=sqlite:////app/data/tasks.db
+      - API_KEY= #TODO: set API-Key
+      - INFERENCE_ROOT_PATH=/inference
+        #      - PYTHONPATH=/app/model:${PYTHONPATH}
+      - MODEL_SCRIPT_PATH=/app/model/dysmarkccls_clean.py
+      - MODEL_PYTHON_PATH=/app/model/venv/bin/python
+      - DIAGNOSTIC_SCRIPT_PATH=/app/model/stat.py
+      - DIAGNOSTIC_PYTHON_PATH=/app/model/venv/bin/python
+      - HF_HOME=/cache
+      - HF_HUB_OFFLINE=1
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface
+    volumes:
+      - inference_data:/app/data
+      - ./model:/app/model:ro
+      - hf_cache:/cache
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# Define volumes for persistent data
+volumes:
+  couchdb_data:
+  mongodb_data:
+  nextcloud:
+  db:
+  games_storage:
+  inference_data:
+  hf_cache:
+
+# Define a shared network
+networks:
+  app-network:
+    driver: bridge
+
