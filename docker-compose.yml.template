@@ -180,12 +180,12 @@ services:
       - BASE_PATH=/api
       - ENV=production
       - DATABASE_URL=sqlite:////app/data/tasks.db
-      - API_KEY= #TODO: set API-Key
+      - API_KEY=${API_KEY} #TODO: set API-Key
       - INFERENCE_ROOT_PATH=/inference
         #      - PYTHONPATH=/app/model:${PYTHONPATH}
       - MODEL_SCRIPT_PATH=/app/model/dysmarkccls_clean.py
       - MODEL_PYTHON_PATH=/app/model/venv/bin/python
-      - DIAGNOSTIC_SCRIPT_PATH=/app/model/stat.py
+      - DIAGNOSTIC_SCRIPT_PATH=/app/model/statdiag.py
       - DIAGNOSTIC_PYTHON_PATH=/app/model/venv/bin/python
       - HF_HOME=/cache
       - HF_HUB_OFFLINE=1
