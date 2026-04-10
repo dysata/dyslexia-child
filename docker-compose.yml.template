@@ -86,7 +86,7 @@ services:
       - PASSWORD=${DATAMGMT_PASSWORD} #TODO: set datamgmp service password
       - COUCHDB_PASSWORD=${COUCHDB_PASSWORD} #TODO: set couchDB password
       - TELEGRAM_TOKEN=${TELEGRAM_TOKEN} #TODO: set telegram token  
-      - TELEGRAM_PROXY_URL=${TELEGRAM_PROXY} #http://usename:password@host:port #TODO: set proxy data if needed
+      - TELEGRAM_PROXY_URL=${TELEGRAM_PROXY_URL} #http://usename:password@host:port #TODO: set proxy data if needed
     depends_on:
       - couchdb
       - mongodb
@@ -125,7 +125,7 @@ services:
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=nextcloud
       - MYSQL_HOST=db
-      - OVERWRITEHOST=${DOMAN} #TODO: set DOMAIN 
+      - OVERWRITEHOST=${DOMAIN} #TODO: set DOMAIN 
       - OVERWRITEWEBROOT=/nextcloud
       - OVERWRITEPROTOCOL=${PROTOCOL} #http or https  # 
       - OVERWRITECLIURL=${PROTOCOL}://${DOMAIN}/nextcloud  #TODO: set DOMAIN
