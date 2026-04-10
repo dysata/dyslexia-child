@@ -54,7 +54,7 @@ services:
       - couchdb_data:/opt/couchdb/data
     environment:
       - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD= #TODO: set password
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD} #TODO: set password
       - COUCHDB_LOG_LEVEL=info
     networks:
       - app-network
@@ -76,17 +76,17 @@ services:
       - ./api/datamgmt/dyslexia-data:/app
       - /app/node_modules  # preserve node_modules
     environment:
-      - BASE_URL=https:DOMAIN/datamgmt #TODO: set domain name
+      - BASE_URL=${PROTOCOL}://${DOMAIN}/datamgmt #https://DOMAIN/datamgmt #TODO: set domain name
       - NODE_ENV=production
       - COUCHDB_URL=http://couchdb:5984
       - MONGODB_URL=mongodb://mongodb:27017
       - NEXTCLOUD_INTERNAL=http://nextcloud:80
       - PUBLIC_PATH=/datamgmt
-      - NEXTCLOUD_PASSWORD= #TODO: set password
-      - PASSWORD= #TODO: set datamgmp service password
-      - COUCHDB_PASSWORD= #TODO: set couchDB password
-      - TELEGRAM_TOKEN= #TODO: set telegram token  
-      - TELEGRAM_PROXY_URL=http://usename:password@host:port #TODO: set proxy data if needed
+      - NEXTCLOUD_PASSWORD=${NEXTCLOUD_PASSWORD} #TODO: set password
+      - PASSWORD=${DATAMGMT_PASSWORD} #TODO: set datamgmp service password
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD} #TODO: set couchDB password
+      - TELEGRAM_TOKEN=${TELEGRAM_TOKEN} #TODO: set telegram token  
+      - TELEGRAM_PROXY_URL=${TELEGRAM_PROXY} #http://usename:password@host:port #TODO: set proxy data if needed
     depends_on:
       - couchdb
       - mongodb
@@ -125,10 +125,10 @@ services:
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=nextcloud
       - MYSQL_HOST=db
-      - OVERWRITEHOST=DOMAN #TODO: set DOMAIN 
+      - OVERWRITEHOST=${DOMAN} #TODO: set DOMAIN 
       - OVERWRITEWEBROOT=/nextcloud
-      - OVERWRITEPROTOCOL=https  # 
-      - OVERWRITECLIURL=https://DOMAIN/nextcloud  #TODO: set DOMAIN
+      - OVERWRITEPROTOCOL=${PROTOCOL} #http or https  # 
+      - OVERWRITECLIURL=${PROTOCOL}://${DOMAIN}/nextcloud  #TODO: set DOMAIN
 #      - TRUSTED_PROXIES=172.16.0.0/12
     volumes:
       - nextcloud:/var/www/html
@@ -153,7 +153,7 @@ services:
         #      - PYTHONPATH=/app/model:${$PYTHONPATH}
       - MODEL_SCRIPT_PATH=/app/model/dysmarkccls_clean.py
       - MODEL_PYTHON_PATH=/app/model/venv/bin/python
-      - DIAGNOSTIC_SCRIPT_PATH=/app/model/stat.py
+      - DIAGNOSTIC_SCRIPT_PATH=/app/model/statdiag.py
       - DIAGNOSTIC_PYTHON_PATH=/app/model/venv/bin/python
     volumes:
       - games_storage:/app/storage

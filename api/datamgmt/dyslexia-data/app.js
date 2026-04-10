@@ -315,459 +315,473 @@ app.use("/storage", nextcloud_proxy);
 // //------------------- proxy for nextcloud --------------------------
 
 //////////////////////// Neuroscience bot /////////////////////
+//
 
-const { HttpsProxyAgent } = require("https-proxy-agent");
+console.log("!!!!!!!!!! Check if telegram_token is empty or not !!!!!!!!!!");
+console.log(telegram_token);
 
-const TelegramBot = require("node-telegram-bot-api");
+var neural_bot = null;
+var initWebhook = null;
+var WEBHOOK_PATH = null; 
 
-const neural_bot_token = telegram_token;
-const PROXY_URL = process.env.TELEGRAM_PROXY_URL;
-console.log("PROXY_URL = " + PROXY_URL);
+if(telegram_token) {
+    console.log("Telegram token is set, so trying to run the telegram bot");
 
-proxyAgent = new HttpsProxyAgent(PROXY_URL);
+    const { HttpsProxyAgent } = require("https-proxy-agent");
 
-let bot_options = {
-  polling: false, //can be set to true, then don't call initWebhook in bin/www
-  filepath: true,
-};
+    const TelegramBot = require("node-telegram-bot-api");
 
-if (PROXY_URL) {
-  const proxyAgent = new HttpsProxyAgent(PROXY_URL);
+    const neural_bot_token = telegram_token;
+    const PROXY_URL = process.env.TELEGRAM_PROXY_URL;
+    console.log("PROXY_URL = " + PROXY_URL);
 
-  bot_options.request = {
-    agent: proxyAgent,
-  };
-}
+    proxyAgent = new HttpsProxyAgent(PROXY_URL);
 
-const neural_bot = new TelegramBot(neural_bot_token, bot_options);
+    let bot_options = {
+      polling: false, //can be set to true, then don't call initWebhook in bin/www
+      filepath: true,
+    };
 
-const BASE_URL = process.env.BASE_URL; //
+    if (PROXY_URL) {
+      const proxyAgent = new HttpsProxyAgent(PROXY_URL);
 
-if (!BASE_URL) {
-  console.error("Ошибка: Переменная окружения BASE_URL не установлена!");
-  process.exit(1);
-}
-
-// Убираем trailing slash у базы, если он есть, и добавляем путь вебхука
-const cleanBaseUrl = BASE_URL.replace(/\/$/, "");
-const WEBHOOK_PATH = "/bot/webhook";
-const WEBHOOK_URL = `${cleanBaseUrl}${WEBHOOK_PATH}`;
-
-console.log(`Инициализация бота. Webhook URL: ${WEBHOOK_URL}`);
-
-app.use('/bot/webhook', express.json());
-
-// 1. Создаем роут для вебхука
-app.post("/bot/webhook", (req, res) => {
-  console.log("Request from tg" + JSON.stringify(req.body));
-  // Передаем запрос библиотеке для обработки
-  neural_bot.processUpdate(req.body);
-  console.log("After process Update");
-  res.sendStatus(200); // Отвечаем Telegram, что получили
-  console.log("Sent 200 to tg");
-});
-
-// Установка вебхука
-async function initWebhook() {
-  try {
-    const info = await neural_bot.setWebHook(WEBHOOK_URL);
-    if (info) {
-      console.log(`Webhook успешно установлен: ${WEBHOOK_URL}`);
-    } else {
-      console.warn(" Ответ от Telegram пустой, но ошибок нет.");
+      bot_options.request = {
+        agent: proxyAgent,
+      };
     }
 
-    // Дополнительная проверка
-    const hookInfo = await neural_bot.getWebHookInfo();
+    neural_bot = new TelegramBot(neural_bot_token, bot_options);
 
-    console.log(
-      " Текущий статус вебхука:",
-      hookInfo.url,
-      "| Ошибки:",
-      hookInfo.last_error_message || "Нет",
-    );
-  } catch (error) {
-    console.error("Критическая ошибка при установке вебхука:", error.message);
-    // Не завершаем процесс, чтобы бот мог хотя бы логировать ошибки, но работать не будет
-  }
-}
+    const BASE_URL = process.env.BASE_URL; //
 
-module.exports = {
-  app,
-  neural_bot,
-  webhookPath: WEBHOOK_PATH,
-  initWebhook,
-};
+    if (!BASE_URL) {
+      console.error("Ошибка: Переменная окружения BASE_URL не установлена!");
+      process.exit(1);
+    }
 
-const neural_bot_commands = ["/start"];
+    // Убираем trailing slash у базы, если он есть, и добавляем путь вебхука
+    const cleanBaseUrl = BASE_URL.replace(/\/$/, "");
+    WEBHOOK_PATH = "/bot/webhook";
+    const WEBHOOK_URL = `${cleanBaseUrl}${WEBHOOK_PATH}`;
 
-var neural_chats = {};
+    console.log(`Инициализация бота. Webhook URL: ${WEBHOOK_URL}`);
 
-function neural_bot_init(msg) {
-  if (!(msg.chat.id in neural_chats))
-    neural_chats[msg.chat.id] = {
-      status: "Working",
-      results: {
-        age: null,
-        sex: null,
-        audio: [],
-      },
-    };
-  neural_chats[msg.chat.id]["last_msg"] = msg;
-  var reply =
-    "Здравствуйте! Начнем работу. Пользуйтесь далее меню для отправки данных. Произвольные сообщения я не понимаю.";
-  var options = {
-    reply_markup: {
-      keyboard: [["Возраст", "Пол"]],
-      force_reply: true,
-      one_time_keyboard: true,
-    },
-  };
-  neural_bot.sendMessage(msg.chat.id, reply, options);
-}
+    app.use('/bot/webhook', express.json());
 
-neural_bot.on("any", (data) => {
-  console.log("Любое событие:", data);
-});
+    // 1. Создаем роут для вебхука
+    app.post("/bot/webhook", (req, res) => {
+      console.log("Request from tg" + JSON.stringify(req.body));
+      // Передаем запрос библиотеке для обработки
+      neural_bot.processUpdate(req.body);
+      console.log("After process Update");
+      res.sendStatus(200); // Отвечаем Telegram, что получили
+      console.log("Sent 200 to tg");
+    });
 
-neural_bot.onText(/\/start/, (msg) => {
-  console.log("Telegram Input Message: " + JSON.stringify(msg));
-  neural_bot_init(msg);
-});
-
-function makeid(length) {
-  let result = "";
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const charactersLength = characters.length;
-  let counter = 0;
-  while (counter < length) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-    counter += 1;
-  }
-  return result;
-}
-
-neural_bot.on("message", (msg) => {
-  console.log("Msg: " + JSON.stringify(msg));
-  if ("text" in msg) {
-    const text = msg.text.trim();
-    var first_word = text.split(/\s+/)[0];  //msg.text.split(" ")[0];
-    //if command, do not process
-    if (neural_bot_commands.includes(first_word)) return;
-  }
-
-  var reply = "";
-  var options = {};
-  if (!(msg.chat.id in neural_chats)) {
-    neural_bot_init(msg);
-  } else {
-    if ("text" in msg) {
-      console.log("Text = ");
-      console.log(msg.text);
-      if (neural_chats[msg.chat.id].status == "Working") {
-        if (msg.text == "Возраст") {
-          console.log("processing Age");
-          neural_chats[msg.chat.id].status = "Age";
-          reply = "Укажите возраст:";
-          /*					var keyboard = [
-						['7', '8', '9'],
-						['4', '5', '6'],
-						['1', '2', '3'],
-						['0']
-					]; 
-					options = {
-						reply_markup : {
-						keyboard : keyboard,
-						force_reply : true,
-						one_time_keyboard : true,
-
-						}
-					};
-*/
-        } else if (msg.text == "Пол") {
-          console.log("Processing Sex");
-          neural_chats[msg.chat.id].status = "Sex";
-          reply = "Укажите пол:";
-          var keyboard = [["М", "Ж"]];
-          options = {
-            reply_markup: {
-              keyboard: keyboard,
-              force_reply: true,
-              one_time_keyboard: true,
-            },
-          };
-        } else if (msg.text == "Запись аудио") {
-          console.log("Processing audio");
-          neural_chats[msg.chat.id].status = "Audio";
-          reply =
-            telegram_dyslexia_text +
-            "\n\nПришлите аудиосообщение, в котором вы читаете приведенный выше текст\n";
-          options = {
-            reply_markup: {
-              remove_keyboard: true,
-            },
-          };
+    // Установка вебхука
+    async function initWebhook() {
+      try {
+        const info = await neural_bot.setWebHook(WEBHOOK_URL);
+        if (info) {
+          console.log(`Webhook успешно установлен: ${WEBHOOK_URL}`);
         } else {
-          var reply = "Не понимаю произвольные сообщения. Воспользуйтесь меню.";
-          var keyboard = [[]];
-          var flag = true;
-          if (!neural_chats[msg.chat.id].results.age) {
-            keyboard[0].push("Возраст");
-            flag = false;
-          }
-          if (!neural_chats[msg.chat.id].results.sex) {
-            keyboard[0].push("Пол");
-            flag = false;
-          }
-          if (flag) keyboard[0].push("Запись аудио");
-          var options = {
-            reply_markup: {
-              keyboard: keyboard,
-              force_reply: true,
-              one_time_keyboard: true,
-            },
-          };
+          console.warn(" Ответ от Telegram пустой, но ошибок нет.");
         }
-      } else if (neural_chats[msg.chat.id].status == "Sex") {
-        console.log("Sex state");
-        if (msg.text == "М" || msg.text == "Ж") {
-          neural_chats[msg.chat.id].status = "Working";
-          neural_chats[msg.chat.id].results.sex = (msg.text == "M") ? "m" : "f"; // msg.text;
-          reply = "Записал Пол = " + msg.text;
-          var keyboard = [[]];
-          if (!neural_chats[msg.chat.id].results.age)
-            keyboard[0].push("Возраст");
-          else keyboard[0].push("Запись аудио");
-          options = {
-            reply_markup: {
-              keyboard: keyboard,
-              force_reply: true,
-              one_time_keyboard: true,
-            },
-          };
-        } else {
-          reply = "Укажите пол:";
-          var keyboard = [["М", "Ж"]];
-          options = {
-            reply_markup: {
-              keyboard: keyboard,
-              force_reply: true,
-              one_time_keyboard: true,
-            },
-          };
-        }
-      } else if (neural_chats[msg.chat.id].status == "Age") {
-        console.log("Age state");
-        const parsed = parseInt(msg.text, 10);
-        if (isNaN(parsed) || parsed < 4 || parsed > 110) {
-          reply = "Укажите возраст:";
-          /*					var keyboard = [
-						['7', '8', '9'],
-						['4', '5', '6'],i
-						['1', '2', '3'],
-						['0']
-					]; 
-					options = {
-						reply_markup : {
-						keyboard : keyboard,
-						force_reply : true,
-						one_time_keyboard : true
-						}
-					};
-*/
-        } else {
-          neural_chats[msg.chat.id].status = "Working";
-          neural_chats[msg.chat.id].results.age = parsed;
-          reply = "Записал Возраст = " + msg.text;
-          var keyboard = [[]];
-          if (!neural_chats[msg.chat.id].results.sex) keyboard[0].push("Пол");
-          else keyboard[0].push("Запись аудио");
-          options = {
-            reply_markup: {
-              keyboard: keyboard,
-              force_reply: true,
-              one_time_keyboard: true,
-            },
-          };
-        }
-      } else if (neural_chats[msg.chat.id].status == "Запись аудио") {
-        console.log("Audio state in text");
-        neural_chats[msg.chat.id].status = "Audio";
-        reply =
-          config.misc.telegram.neural.dyslexia.text +
-          "\n\nПришлите аудиосообщение, в котором вы читаете приведенный выше текст\n";
-        options = {
-          reply_markup: {
-            remove_keyboard: true,
-          },
-        };
+
+        // Дополнительная проверка
+        const hookInfo = await neural_bot.getWebHookInfo();
+
+        console.log(
+          " Текущий статус вебхука:",
+          hookInfo.url,
+          "| Ошибки:",
+          hookInfo.last_error_message || "Нет",
+        );
+      } catch (error) {
+        console.error("Критическая ошибка при установке вебхука:", error.message);
+        // Не завершаем процесс, чтобы бот мог хотя бы логировать ошибки, но работать не будет
       }
-//TODO: consider using axious for requests: npm install axios	    
-    } else if ("voice" in msg) {
-      if (neural_chats[msg.chat.id].status == "Audio") {
-        console.log("have to save audio");
+    }
 
-        const readStream = neural_bot.getFileStream(msg.voice.file_id);
+    const neural_bot_commands = ["/start"];
 
-        console.log("got stream");
+    var neural_chats = {};
 
-        const http = require("http");
-        var username = USERNAME;
-        var password = PASSWORD;
-        var auth =
-          "Basic " + Buffer.from(username + ":" + password).toString("base64");
-        const req_options = {
-          hostname: "localhost",
-          port: 3000,
-          path: "/tokens",
-          method: "GET",
-          headers: {
-            Authorization: auth,
+    function neural_bot_init(msg) {
+      if (!(msg.chat.id in neural_chats))
+        neural_chats[msg.chat.id] = {
+          status: "Working",
+          results: {
+            age: null,
+            sex: null,
+            audio: [],
           },
         };
-        const req = http.request(req_options, (res) => {
-          console.log("statusCode:", res.statusCode);
-          console.log("headers:", res.headers);
-          var cookie = res.headers["set-cookie"];
-          console.log("set-cookie: " + cookie);
-          let str = "";
-          res.on("data", (d) => {
-            str += d.toString();
-          });
-          res.on("end", function () {
-            const body = JSON.parse(str);
-            console.log(body);
-            var filename =
-              body.tokens[0].user_id + "-audio-telegram-" + makeid(10) + ".ogg";
-            var user_id = body.tokens[0].user_id;
+      neural_chats[msg.chat.id]["last_msg"] = msg;
+      var reply =
+        "Здравствуйте! Начнем работу. Пользуйтесь далее меню для отправки данных. Произвольные сообщения я не понимаю.";
+      var options = {
+        reply_markup: {
+          keyboard: [["Возраст", "Пол"]],
+          force_reply: true,
+          one_time_keyboard: true,
+        },
+      };
+      neural_bot.sendMessage(msg.chat.id, reply, options);
+    }
+
+    neural_bot.on("any", (data) => {
+      console.log("Любое событие:", data);
+    });
+
+    neural_bot.onText(/\/start/, (msg) => {
+      console.log("Telegram Input Message: " + JSON.stringify(msg));
+      neural_bot_init(msg);
+    });
+
+    function makeid(length) {
+      let result = "";
+      const characters =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      const charactersLength = characters.length;
+      let counter = 0;
+      while (counter < length) {
+        result += characters.charAt(Math.floor(Math.random() * charactersLength));
+        counter += 1;
+      }
+      return result;
+    }
+
+    neural_bot.on("message", (msg) => {
+      console.log("Msg: " + JSON.stringify(msg));
+      if ("text" in msg) {
+        const text = msg.text.trim();
+        var first_word = text.split(/\s+/)[0];  //msg.text.split(" ")[0];
+        //if command, do not process
+        if (neural_bot_commands.includes(first_word)) return;
+      }
+
+      var reply = "";
+      var options = {};
+      if (!(msg.chat.id in neural_chats)) {
+        neural_bot_init(msg);
+      } else {
+        if ("text" in msg) {
+          console.log("Text = ");
+          console.log(msg.text);
+          if (neural_chats[msg.chat.id].status == "Working") {
+            if (msg.text == "Возраст") {
+              console.log("processing Age");
+              neural_chats[msg.chat.id].status = "Age";
+              reply = "Укажите возраст:";
+              /*					var keyboard = [
+                            ['7', '8', '9'],
+                            ['4', '5', '6'],
+                            ['1', '2', '3'],
+                            ['0']
+                        ]; 
+                        options = {
+                            reply_markup : {
+                            keyboard : keyboard,
+                            force_reply : true,
+                            one_time_keyboard : true,
+
+                            }
+                        };
+    */
+            } else if (msg.text == "Пол") {
+              console.log("Processing Sex");
+              neural_chats[msg.chat.id].status = "Sex";
+              reply = "Укажите пол:";
+              var keyboard = [["М", "Ж"]];
+              options = {
+                reply_markup: {
+                  keyboard: keyboard,
+                  force_reply: true,
+                  one_time_keyboard: true,
+                },
+              };
+            } else if (msg.text == "Запись аудио") {
+              console.log("Processing audio");
+              neural_chats[msg.chat.id].status = "Audio";
+              reply =
+                telegram_dyslexia_text +
+                "\n\nПришлите аудиосообщение, в котором вы читаете приведенный выше текст\n";
+              options = {
+                reply_markup: {
+                  remove_keyboard: true,
+                },
+              };
+            } else {
+              var reply = "Не понимаю произвольные сообщения. Воспользуйтесь меню.";
+              var keyboard = [[]];
+              var flag = true;
+              if (!neural_chats[msg.chat.id].results.age) {
+                keyboard[0].push("Возраст");
+                flag = false;
+              }
+              if (!neural_chats[msg.chat.id].results.sex) {
+                keyboard[0].push("Пол");
+                flag = false;
+              }
+              if (flag) keyboard[0].push("Запись аудио");
+              var options = {
+                reply_markup: {
+                  keyboard: keyboard,
+                  force_reply: true,
+                  one_time_keyboard: true,
+                },
+              };
+            }
+          } else if (neural_chats[msg.chat.id].status == "Sex") {
+            console.log("Sex state");
+            if (msg.text == "М" || msg.text == "Ж") {
+              neural_chats[msg.chat.id].status = "Working";
+              neural_chats[msg.chat.id].results.sex = (msg.text == "M") ? "m" : "f"; // msg.text;
+              reply = "Записал Пол = " + msg.text;
+              var keyboard = [[]];
+              if (!neural_chats[msg.chat.id].results.age)
+                keyboard[0].push("Возраст");
+              else keyboard[0].push("Запись аудио");
+              options = {
+                reply_markup: {
+                  keyboard: keyboard,
+                  force_reply: true,
+                  one_time_keyboard: true,
+                },
+              };
+            } else {
+              reply = "Укажите пол:";
+              var keyboard = [["М", "Ж"]];
+              options = {
+                reply_markup: {
+                  keyboard: keyboard,
+                  force_reply: true,
+                  one_time_keyboard: true,
+                },
+              };
+            }
+          } else if (neural_chats[msg.chat.id].status == "Age") {
+            console.log("Age state");
+            const parsed = parseInt(msg.text, 10);
+            if (isNaN(parsed) || parsed < 4 || parsed > 110) {
+              reply = "Укажите возраст:";
+              /*					var keyboard = [
+                            ['7', '8', '9'],
+                            ['4', '5', '6'],i
+                            ['1', '2', '3'],
+                            ['0']
+                        ]; 
+                        options = {
+                            reply_markup : {
+                            keyboard : keyboard,
+                            force_reply : true,
+                            one_time_keyboard : true
+                            }
+                        };
+    */
+            } else {
+              neural_chats[msg.chat.id].status = "Working";
+              neural_chats[msg.chat.id].results.age = parsed;
+              reply = "Записал Возраст = " + msg.text;
+              var keyboard = [[]];
+              if (!neural_chats[msg.chat.id].results.sex) keyboard[0].push("Пол");
+              else keyboard[0].push("Запись аудио");
+              options = {
+                reply_markup: {
+                  keyboard: keyboard,
+                  force_reply: true,
+                  one_time_keyboard: true,
+                },
+              };
+            }
+          } else if (neural_chats[msg.chat.id].status == "Запись аудио") {
+            console.log("Audio state in text");
+            neural_chats[msg.chat.id].status = "Audio";
+            reply =
+              config.misc.telegram.neural.dyslexia.text +
+              "\n\nПришлите аудиосообщение, в котором вы читаете приведенный выше текст\n";
+            options = {
+              reply_markup: {
+                remove_keyboard: true,
+              },
+            };
+          }
+    //TODO: consider using axious for requests: npm install axios	    
+        } else if ("voice" in msg) {
+          if (neural_chats[msg.chat.id].status == "Audio") {
+            console.log("have to save audio");
+
+            const readStream = neural_bot.getFileStream(msg.voice.file_id);
+
+            console.log("got stream");
+
+            const http = require("http");
+            var username = USERNAME;
+            var password = PASSWORD;
+            var auth =
+              "Basic " + Buffer.from(username + ":" + password).toString("base64");
             const req_options = {
               hostname: "localhost",
               port: 3000,
-              path: "/storage/" + filename,
-              method: "PUT",
+              path: "/tokens",
+              method: "GET",
               headers: {
-                "Content-Type": "audio/ogg",
-                Cookie: cookie,
+                Authorization: auth,
               },
             };
             const req = http.request(req_options, (res) => {
               console.log("statusCode:", res.statusCode);
               console.log("headers:", res.headers);
+              var cookie = res.headers["set-cookie"];
+              console.log("set-cookie: " + cookie);
               let str = "";
               res.on("data", (d) => {
                 str += d.toString();
               });
               res.on("end", function () {
-                console.log(str);
-                if (res.statusCode == 201) {
-                  var couchdb_doc = {
-                    dataobject: {
-                      files: [{ path: filename, mime: "audio/ogg" }],
-                      tags: ["dyslexia"],
-                      user_id: user_id,
-                      source: "telegram",
-                      msg: msg,
-                    },
-                  };
-		  const couchdb_req_body = JSON.stringify(couchdb_doc);
-		  console.log("sending meta to CouchDB" + couchdb_req_body);
-		  console.log("JSON String Length (chars):", couchdb_req_body.length);
-		  console.log("JSON Byte Length (utf8):", Buffer.byteLength(couchdb_req_body, 'utf8'));
-		  const bodyBuffer = Buffer.from(couchdb_req_body, 'utf8');
-                  const req_options = {
-                    hostname: "localhost",
-                    port: 3000,
-                    path: "/couchdb/dyslexia/",
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json; charset=utf-8",
-                      "Content-Length": bodyBuffer.length,
-//		      "Transfer-Encoding": "chunked",
-                      Cookie: cookie,
-                    },
-                  };
-                  const req = http.request(req_options, (res) => {
-	            console.log("CouchDB response received");
-		    res.setEncoding('utf8');
-		    console.log("statusCode:", res.statusCode);
-                    console.log("headers:", res.headers);
-                    let str = "";
-                    res.on("data", (d) => {
-                      str += d.toString();
-                    });
-                    res.on("end", function () {
-                      console.log("Response:", str);
-                      if (res.statusCode === 201) {
-                        console.log("Document created successfully!");
-                      } else {
-                        console.log("Error from CouchDB:", str);
-                      }			    
-                    });
+                const body = JSON.parse(str);
+                console.log(body);
+                var filename =
+                  body.tokens[0].user_id + "-audio-telegram-" + makeid(10) + ".ogg";
+                var user_id = body.tokens[0].user_id;
+                const req_options = {
+                  hostname: "localhost",
+                  port: 3000,
+                  path: "/storage/" + filename,
+                  method: "PUT",
+                  headers: {
+                    "Content-Type": "audio/ogg",
+                    Cookie: cookie,
+                  },
+                };
+                const req = http.request(req_options, (res) => {
+                  console.log("statusCode:", res.statusCode);
+                  console.log("headers:", res.headers);
+                  let str = "";
+                  res.on("data", (d) => {
+                    str += d.toString();
                   });
-                  req.on("error", (e) => {
-                    console.log("in req error");
-                    console.error(e);
+                  res.on("end", function () {
+                    console.log(str);
+                    if (res.statusCode == 201) {
+                      var couchdb_doc = {
+                        dataobject: {
+                          files: [{ path: filename, mime: "audio/ogg" }],
+                          tags: ["dyslexia"],
+                          user_id: user_id,
+                          source: "telegram",
+                          msg: msg,
+                        },
+                      };
+              const couchdb_req_body = JSON.stringify(couchdb_doc);
+              console.log("sending meta to CouchDB" + couchdb_req_body);
+              console.log("JSON String Length (chars):", couchdb_req_body.length);
+              console.log("JSON Byte Length (utf8):", Buffer.byteLength(couchdb_req_body, 'utf8'));
+              const bodyBuffer = Buffer.from(couchdb_req_body, 'utf8');
+                      const req_options = {
+                        hostname: "localhost",
+                        port: 3000,
+                        path: "/couchdb/dyslexia/",
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "application/json; charset=utf-8",
+                          "Content-Length": bodyBuffer.length,
+    //		      "Transfer-Encoding": "chunked",
+                          Cookie: cookie,
+                        },
+                      };
+                      const req = http.request(req_options, (res) => {
+                    console.log("CouchDB response received");
+                res.setEncoding('utf8');
+                console.log("statusCode:", res.statusCode);
+                        console.log("headers:", res.headers);
+                        let str = "";
+                        res.on("data", (d) => {
+                          str += d.toString();
+                        });
+                        res.on("end", function () {
+                          console.log("Response:", str);
+                          if (res.statusCode === 201) {
+                            console.log("Document created successfully!");
+                          } else {
+                            console.log("Error from CouchDB:", str);
+                          }			    
+                        });
+                      });
+                      req.on("error", (e) => {
+                        console.log("in req error");
+                        console.error(e);
+                      });
+                      req.write(bodyBuffer);
+                      req.end();
+                    }
                   });
-                  req.write(bodyBuffer);
-                  req.end();
-                }
+                });
+                req.on("error", (e) => {
+                  console.log("in req error");
+                  console.error(e);
+                });
+                readStream.on("end", () => req.end());
+                readStream.pipe(req);
               });
             });
             req.on("error", (e) => {
               console.log("in req error");
               console.error(e);
             });
-            readStream.on("end", () => req.end());
-            readStream.pipe(req);
-          });
-        });
-        req.on("error", (e) => {
-          console.log("in req error");
-          console.error(e);
-        });
-        req.end();
+            req.end();
 
-        neural_chats[msg.chat.id].status = "Working";
-        reply =
-          "Сохранил аудио. Можете повторить процедуру сами или предложить пройти eё другому человеку.";
-        neural_bot_init(msg);
+            neural_chats[msg.chat.id].status = "Working";
+            reply =
+              "Сохранил аудио. Можете повторить процедуру сами или предложить пройти eё другому человеку.";
+            neural_bot_init(msg);
 
-        /*				var keyboard = [[]];
-				keyboard[0].push('Запись аудио');
-				var options = {
-					reply_markup: {
-						keyboard: keyboard,
-						force_reply: true,
-						one_time_keyboard: true
-					}
-				};
-*/
-      } else {
-        var reply = "Не понимаю произвольные сообщения. Воспользуйтесь меню.";
-        var keyboard = [[]];
-        var flag = true;
-        if (!neural_chats[msg.chat.id].results.age) {
-          keyboard[0].push("Возраст");
-          flag = false;
+            /*				var keyboard = [[]];
+                    keyboard[0].push('Запись аудио');
+                    var options = {
+                        reply_markup: {
+                            keyboard: keyboard,
+                            force_reply: true,
+                            one_time_keyboard: true
+                        }
+                    };
+    */
+          } else {
+            var reply = "Не понимаю произвольные сообщения. Воспользуйтесь меню.";
+            var keyboard = [[]];
+            var flag = true;
+            if (!neural_chats[msg.chat.id].results.age) {
+              keyboard[0].push("Возраст");
+              flag = false;
+            }
+            if (!neural_chats[msg.chat.id].results.sex) {
+              keyboard[0].push("Пол");
+              flag = false;
+            }
+            if (flag) keyboard[0].push("Запись аудио");
+            var options = {
+              reply_markup: {
+                keyboard: keyboard,
+                force_reply: true,
+                one_time_keyboard: false,
+              },
+            };
+          }
         }
-        if (!neural_chats[msg.chat.id].results.sex) {
-          keyboard[0].push("Пол");
-          flag = false;
-        }
-        if (flag) keyboard[0].push("Запись аудио");
-        var options = {
-          reply_markup: {
-            keyboard: keyboard,
-            force_reply: true,
-            one_time_keyboard: false,
-          },
-        };
       }
-    }
-  }
-  if (reply != "") {
-    neural_bot.sendMessage(msg.chat.id, reply, options);
-  }
-  console.log("Reply = " + reply);
-});
+      if (reply != "") {
+        neural_bot.sendMessage(msg.chat.id, reply, options);
+      }
+      console.log("Reply = " + reply);
+    });
+}
+
+ module.exports = {
+   app,
+   neural_bot,
+   webhookPath: WEBHOOK_PATH,
+   initWebhook,
+};
+
+
