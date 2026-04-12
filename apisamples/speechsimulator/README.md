@@ -2,14 +2,10 @@
 The list of words presented in the game1 is in `static/game1/scripts/game1words.js`. It is a short list of words (20) for demonstration. In real applications substitute this file with
 `static/game1/scrits/game1words_full.js` (about 400 words):
 ```
-nv static/game1/scripts/game1words_full.js static/game1/scripts/game1words.js
+mv static/game1/scripts/game1words_full.js static/game1/scripts/game1words.js
 ```
 
 The same holds for other games too.
-
-#TODO
-- check saved word indices
-- 
 
 # SpeechSimulator
 
@@ -50,11 +46,7 @@ Navigate to http://localhost:8080/ (change the port number to what was set for t
 
 Find stored wav files in storage/game
 
-### To note
-The service will download models (> 1 GB) at the first run.
--- this NN analysis is outcommented for now, is not used
-
-In Russian
+## In Russian
 1) получение кода
 
 1.1) распаковка из архива:
