@@ -2,5 +2,5 @@
 - дообучение wav2vec2
 - обучение CatBoost
 
-См. подробнее в файле docs/training.pdf (docs в корне репозитория)
+См. подробнее в файле [docs/training.pdf](docs/training.pdf) (docs в корне репозитория)
 
